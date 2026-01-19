@@ -29,7 +29,7 @@ const userSchema = new Schema({
         type: String, //cloudinary url
         required: true
     },
-    coverImg: {
+    coverImage: {
         //Thumbnail
         type: String,
     },
@@ -46,12 +46,12 @@ const userSchema = new Schema({
     refreshToken: {
         type: String
     }
-}, { timestemps })
+}, { timestemps: true })
 
 //save hashed password, middleware-> hooks -> pre
 userSchema.pre("save", async function (next) { //To access this
     if (!this.isModified("password")) return next() //? Update when password field is updated, 1. user create, 2. password update
-    this.password = bcrypt.hash(this.password, 10)
+    this.password = await bcrypt.hash(this.password, 10)
     next()
     // if(this.isModified("password")){this.password = bcrypt.hash(this.password, 10) 
     // next()}
