@@ -18,4 +18,8 @@ app.use(express.static("public")) //Store static content on server img, pdf, fav
 
 app.use(cookieParser()) //CRUD cookies
   
+//Import Routes
+import userRoutes from './routes/user.routes.js'
+app.use("/api/v1/users", userRoutes)
+
 export { app }

@@ -6,7 +6,9 @@
 
 //? Promises based 
 const asyncHandler = (requestHandler) => {
-    (req, res, next) => {
+    //TypeError: argument handler must be a function
+// (req, res, next) => {
+   return (req, res, next) => {
         Promise.resolve(requestHandler(req, res, next)).catch((err) => {
             next(err)
         })
