@@ -46,7 +46,7 @@ const userSchema = new Schema({
     refreshToken: {
         type: String
     }
-}, { timestemps: true })
+}, { timestemps:true })
 
 //save hashed password, middleware-> hooks -> pre
 userSchema.pre("save", async function (next) { //To access this

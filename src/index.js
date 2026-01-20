@@ -1,3 +1,20 @@
+//? Global, Process-Level Error Handling
+process.on("unhandledRejection", (reason) => {
+    //   console.error("UNHANDLED REJECTION (raw):", reason);
+
+    if (reason?.error) {
+        console.error("Actual error:", reason.error);
+        console.error("Stack trace:\n", reason.error.stack)
+    }
+    else if (reason instanceof Error) {
+        console.error("Stack trace:\n", reason.stack);
+    }
+});
+
+process.on("uncaughtException", (err) => {
+    console.error("UNCAUGHT EXCEPTION:", err);
+});
+
 // require('dotenv).config()
 // require('dotenv).config({path: './.env'})
 // import 'dotenv/config'
@@ -13,16 +30,16 @@ const PORT = process.env.PORT || 8000
 connectDB()
     .then(() => {
         app.on("error", (error) => {
-            console.log("ERROR:", error);
+            console.error("ERROR:", error);
             throw error
         })
-        
+
         app.listen(PORT, () => {
             console.log(`Server on http://localhost:${PORT}`);
         })
     })
     .catch((error) => {
-        console.log("Mongodb Connection Failed!!", error);
+        console.error("Mongodb Connection Failed!!", error);
     })
 
 
