@@ -1,3 +1,13 @@
+import 'dotenv/config'
+
+// require('dotenv).config()
+// require('dotenv).config({path: './.env'})
+
+// import dotenv from 'dotenv'
+// dotenv.config()
+// dotenv.config({
+//     path: './.env'
+// })
 //? Global, Process-Level Error Handling
 process.on("unhandledRejection", (reason) => {
     //   console.error("UNHANDLED REJECTION (raw):", reason);
@@ -15,17 +25,11 @@ process.on("uncaughtException", (err) => {
     console.error("UNCAUGHT EXCEPTION:", err);
 });
 
-// require('dotenv).config()
-// require('dotenv).config({path: './.env'})
-// import 'dotenv/config'
-import dotenv from 'dotenv'
+
+
 import connectDB from './db/index.js'
 import { app } from './app.js'
 
-// dotenv.config()
-dotenv.config({
-    path: './.env'
-})
 const PORT = process.env.PORT || 8000
 connectDB()
     .then(() => {

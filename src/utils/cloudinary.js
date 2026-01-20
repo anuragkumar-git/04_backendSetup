@@ -13,18 +13,24 @@ cloudinary.config({
 
 const uploadOnCloudinary = async (localFilePath) => {
     try {
-        if (!localFilePath) return null
+
+        if (!localFilePath) {
+            console.log(`file path not found`);
+            return null
+        }
 
         //upload file to cloudinary
-        const response = await cloudinary.uploader.upload(localFilePath, { resource_type: "auto" })
+        const response = await cloudinary.uploader.upload(localFilePath, {
+            folder: 'ChaiaurBackend',
+            resource_type: "auto"
+        })
 
-        // file uploaded
-        console.log('file uploaded on cloudinary', response);
-        console.log('file URL uploaded on cloudinary', response.url);
+        fs.unlinkSync(localFilePath)
         // return response.url
         return response
     } catch (error) {
         //CleanUP
+        console.log(`catch(cloudinary) file upload failed`, error);
         fs.unlinkSync(localFilePath) //remove locally saved file due to upload failure
         return null
     }

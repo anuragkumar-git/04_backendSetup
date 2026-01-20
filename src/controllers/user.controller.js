@@ -29,7 +29,7 @@ const registerUser = asyncHandler(async (req, res) => {
         throw new ApiError(400, "All Fields are required")
     }
 
-    const userExists = User.findOne({
+    const userExists = await User.findOne({
         $or: [{ userName }, { email }]
     })
 
@@ -39,22 +39,32 @@ const registerUser = asyncHandler(async (req, res) => {
 
     // req.files by multer
     //recommand multer middleware
-    console.log(`req.files:`, req.files)
-    const avatarLocalPath = req.files?.avatar[0]?.path 
-    const coverImageLocalPath = req.files?.coverImage[0]?.path
+    console.log("req.files", req.files);
 
-    if(!avatarLocalPath){
+    const avatarLocalPath = req.files?.avatar[0]?.path
+    // const coverImageLocalPath = req.files?.coverImage[0]?.path  
+    let coverImageLocalPath
+    if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage > 0) {
+        coverImageLocalPath = req.files?.coverImage[0]?.path
+    }
+    if (!avatarLocalPath) {
         throw new ApiError(400, "Avatar required!!")
     }
 
-    const avatar = await uploadOnCloudinary(avatarLocalPath)
-    const coverImage = await uploadOnCloudinary (coverImageLocalPath)
+    // console.log('Controller: avatarLocalPath\n', avatarLocalPath);
+    // console.log('Controller: coverImageLocalPath\n', coverImageLocalPath);
 
-    if(!avatar){
+    const avatar = await uploadOnCloudinary(avatarLocalPath)
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+
+    // console.log('avtar:', avatar?.url, avatar);
+    // console.log('coverImage:', coverImage);
+
+    if (!avatar) {
         throw new ApiError(400, "Avatar file is rquired, Cloudinary")
     }
 
-    const user = awaitUser.create({
+    const user = await User.create({
         userName: userName.toLowerCase(),
         fullName,
         email,
@@ -65,13 +75,13 @@ const registerUser = asyncHandler(async (req, res) => {
 
     const createdUser = await User.findById(user._id).select("-password -refreshToken")
 
-    if(!createdUser){
+    if (!createdUser) {
         throw new ApiError(500, "Somthing went wrong while regestering user")
     }
 
     // return res.status(201).json({createdUser})
     return res.status(201).json(
-        new ApiResponse(200, createdUser, "User Registerd successfully")
+        new ApiResponse(201, createdUser, "User Registerd successfully")
     )
 })
 

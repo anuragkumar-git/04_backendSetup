@@ -46,13 +46,12 @@ const userSchema = new Schema({
     refreshToken: {
         type: String
     }
-}, { timestemps:true })
+}, { timestamps: true })
 
 //save hashed password, middleware-> hooks -> pre
-userSchema.pre("save", async function (next) { //To access this
-    if (!this.isModified("password")) return next() //? Update when password field is updated, 1. user create, 2. password update
+userSchema.pre("save", async function () { //To access this
+    if (!this.isModified("password")) return; //? Update when password field is updated, 1. user create, 2. password update
     this.password = await bcrypt.hash(this.password, 10)
-    next()
     // if(this.isModified("password")){this.password = bcrypt.hash(this.password, 10) 
     // next()}
 })
