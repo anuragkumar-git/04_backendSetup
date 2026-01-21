@@ -3,6 +3,7 @@ import { ApiError } from '../utils/ApiError.js'
 import { ApiResponse } from '../utils/ApiResponse.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 import { uploadOnCloudinary } from '../utils/cloudinary.js'
+import jwt from 'jsonwebtoken'
 
 const generateAccessTokenAndRefreshTokens = async (userId) => {
     try {
@@ -125,7 +126,8 @@ const loginUser = asyncHandler(async (req, res) => {
 
     const { userName, email, password } = req.body
 
-    if (!userName || !email) {
+    // if (!(userName || email)) {
+    if (!userName && !email) {
         throw new ApiError(400, "Username or Email is required!")
     }
 
@@ -158,8 +160,8 @@ const loginUser = asyncHandler(async (req, res) => {
 
     return res
         .status(200)
-        .cookie("AccessToken", accessToken, options)
-        .cookie("RefreshToken", refreshToken)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
         .json(
             new ApiResponse(
                 200,
@@ -187,7 +189,7 @@ const logoutUser = asyncHandler(async (req, res) => {
             new: true // to get updated user
         }
     )
-
+    //! user.refreshToken: `token` | not updating user
     const options = {
         htttpOnly: true,
         secure: true
@@ -195,14 +197,64 @@ const logoutUser = asyncHandler(async (req, res) => {
 
     return res
         .status(200)
-        .cleareCookie("accessToken", options) //Cookie parser ni den
-        .cleareCookie("refreshToken", options) //Cookie parser ni den
+        .clearCookie("accessToken", options) //Cookie parser ni den
+        .clearCookie("refreshToken", options) //Cookie parser ni den
         .json(new ApiResponse(200, {}, "User Logged Out"))
 })
 
 
+const refreshAccessToken =
+    // cookie > refreshtoken
+    // !refresh token -> logout
+    // match token dbcall
+    // !match remove from db, clear cookie.refreshToken
+    // match-> gen accestoken
+    asyncHandler(async (req, res) => {
+        const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken //body-mobile app
+
+        if (!incomingRefreshToken) {
+            console.error('No incomingRefreshToken!!')
+            throw new ApiError(401, "Unauthorized Request")
+        }
+
+        try {
+            //? create compare method like NEXORA
+            const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
+    
+            const user = await User.findById(decodedToken?._id)
+    
+            if (!user) {
+                throw new ApiError(401, "Invalid Refresh Token")
+            }
+    
+            if (incomingRefreshToken !== user?.refreshToken) {
+                throw new ApiError(401, "Refresh token is expired or used")
+            }
+    
+            const options = {
+                htttpOnly: true,
+                secure: true
+            }
+            const { accessToken, newRefreshToken } = await generateAccessTokenAndRefreshTokens(user._id)
+    
+            return res
+                .status(200)
+                .cookie("accessToken", accessToken, options)
+                .cookie("refreshToken", newRefreshToken, options)
+                .json(
+                    new ApiResponse(
+                        200,
+                        {accessToken, refreshToken:newRefreshToken},
+                        "Access token Refreshed"
+                    )
+                )
+        } catch (error) {
+            throw new ApiError(401, error?.message || "Refresh token proccedd failed")
+        }
+    })
 export {
     registerUser,
     loginUser,
     logoutUser,
+    refreshAccessToken
 }
