@@ -5,6 +5,8 @@ import { ApiResponse } from '../utils/ApiResponse.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 import { deleteFileonCloudinary, uploadOnCloudinary } from '../utils/cloudinary.js'
 import jwt from 'jsonwebtoken'
+import mongoose from 'mongoose'
+import { resolveSoa } from 'dns'
 
 const generateAccessTokenAndRefreshTokens = async (userId) => {
     try {
@@ -341,7 +343,8 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
 
 //two db calls(getUser, updateUserfiles) -> migrate in single if possible
 const updateUserAvatar = asyncHandler(async (req, res) => {
-    const newAvatarLocalPath = req.files?.newAvatar[0]?.path
+    // const newAvatarLocalPath = req.files?.newAvatar[0]?.path
+    const newAvatarLocalPath = req.file?.path
     // console.log("req.files", req.files);
 
     if (!newAvatarLocalPath) {
@@ -380,7 +383,8 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
 })
 
 const updateUserCoverImage = asyncHandler(async (req, res) => {
-    const newCoverImageLocalPath = req.files?.newCoverImage[0]?.path
+    // const newCoverImageLocalPath = req.files?.newCoverImage[0]?.path
+    const newCoverImageLocalPath = req.file?.path
     // console.log('newCoverImageLocalPath', newCoverImageLocalPath);
 
     // console.log("req.files", req.files);
@@ -531,6 +535,68 @@ for more aggrigation piplines:mongodb collection -> aggregation -> new stage.
             ))
 })
 
+
+const getWatchHistory = asyncHandler(async (req, res) => {
+    const user = await User.aggregate([
+        {
+            //In aggrigation pipline mongoose don't play role so user._id == String of id, we need objectId('id-String')
+            $match: {
+                _id: new mongoose.Types.ObjectId(req.user?._id)
+            }
+        },
+        {
+            $lookup: {
+                from: "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as: "watchHistory",
+                pipeline: [
+                    {
+                        // ?lookup returns array
+                        $lookup: {
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            // as:"owner"
+                            as: "creater",
+                            pipeline: [
+                                {
+                                    //what if project outside lookup
+                                    $project: {
+                                        fullName: 1,
+                                        userName: 1,
+                                        avatar: 1
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        $addFields: {
+                            owner: {
+                                // $first:"$owner"
+                                $first: "$creater"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+    ])
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                user[0].watchHistory,
+                "Watch history fetched Successfully"
+            )
+        )
+
+
+})
+
 export {
     registerUser,
     loginUser,
@@ -542,4 +608,5 @@ export {
     updateUserAvatar,
     updateUserCoverImage,
     getChannelProfile,
+    getWatchHistory
 }
