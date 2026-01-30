@@ -1,8 +1,9 @@
+import { log } from 'console'
 import { User } from '../models/user.model.js'
 import { ApiError } from '../utils/ApiError.js'
 import { ApiResponse } from '../utils/ApiResponse.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
-import { uploadOnCloudinary } from '../utils/cloudinary.js'
+import { deleteFileonCloudinary, uploadOnCloudinary } from '../utils/cloudinary.js'
 import jwt from 'jsonwebtoken'
 
 const generateAccessTokenAndRefreshTokens = async (userId) => {
@@ -202,56 +203,54 @@ const logoutUser = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, {}, "User Logged Out"))
 })
 
-
-const refreshAccessToken =
+const refreshAccessToken = asyncHandler(async (req, res) => {
     // cookie > refreshtoken
     // !refresh token -> logout
     // match token dbcall
     // !match remove from db, clear cookie.refreshToken
     // match-> gen accestoken
-    asyncHandler(async (req, res) => {
-        const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken //body-mobile app
+    const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken //body-mobile app
 
-        if (!incomingRefreshToken) {
-            console.error('No incomingRefreshToken!!')
-            throw new ApiError(401, "Unauthorized Request")
+    if (!incomingRefreshToken) {
+        console.error('No incomingRefreshToken!!')
+        throw new ApiError(401, "Unauthorized Request")
+    }
+
+    try {
+        //? create compare method like NEXORA
+        const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
+
+        const user = await User.findById(decodedToken?._id)
+
+        if (!user) {
+            throw new ApiError(401, "Invalid Refresh Token")
         }
 
-        try {
-            //? create compare method like NEXORA
-            const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
+        if (incomingRefreshToken !== user?.refreshToken) {
+            throw new ApiError(401, "Refresh token is expired or used")
+        }
 
-            const user = await User.findById(decodedToken?._id)
+        const options = {
+            htttpOnly: true,
+            secure: true
+        }
+        const { accessToken, newRefreshToken } = await generateAccessTokenAndRefreshTokens(user._id)
 
-            if (!user) {
-                throw new ApiError(401, "Invalid Refresh Token")
-            }
-
-            if (incomingRefreshToken !== user?.refreshToken) {
-                throw new ApiError(401, "Refresh token is expired or used")
-            }
-
-            const options = {
-                htttpOnly: true,
-                secure: true
-            }
-            const { accessToken, newRefreshToken } = await generateAccessTokenAndRefreshTokens(user._id)
-
-            return res
-                .status(200)
-                .cookie("accessToken", accessToken, options)
-                .cookie("refreshToken", newRefreshToken, options)
-                .json(
-                    new ApiResponse(
-                        200,
-                        { accessToken, refreshToken: newRefreshToken },
-                        "Access token Refreshed"
-                    )
+        return res
+            .status(200)
+            .cookie("accessToken", accessToken, options)
+            .cookie("refreshToken", newRefreshToken, options)
+            .json(
+                new ApiResponse(
+                    200,
+                    { accessToken, refreshToken: newRefreshToken },
+                    "Access token Refreshed"
                 )
-        } catch (error) {
-            throw new ApiError(401, error?.message || "Refresh token proccedd failed")
-        }
-    })
+            )
+    } catch (error) {
+        throw new ApiError(401, error?.message || "Refresh token proccedd failed")
+    }
+})
 
 
 const changeCurrentPassword = asyncHandler(async (req, res) => {
@@ -338,18 +337,25 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
         )
 })
 
+//? to update files create diff endpoint and diff controller ex.if only: update img -> /update-img Reason: no need to save whole user again if only dp change-> /update-img. 
 const updateUserAvatar = asyncHandler(async (req, res) => {
-    const avatarLocalPath = req.files?.path
+    const newAvatarLocalPath = req.files?.newAvatar[0]?.path
+    // console.log("req.files", req.files);
 
-    if (!avatarLocalPath) {
+    if (!newAvatarLocalPath) {
         throw new ApiError(400, "Avatar file is Missing!!")
     }
 
-    const avatar = await uploadOnCloudinary(avatarLocalPath)
+    const avatar = await uploadOnCloudinary(newAvatarLocalPath)
 
     if (!avatar.url) {
         throw new ApiError(400, "Error while uploading avatar")
     }
+
+    //Delete old avatar from cloudinary
+    const getUserOldfiles = await User.findById(req.user?._id).select("-password -refreshToken -watchHistory")
+    const oldAvatarPublicUrl = getUserOldfiles?.avatar
+    await deleteFileonCloudinary(oldAvatarPublicUrl)
 
     const user = await User.findByIdAndUpdate(req.user?._id,
         {
@@ -370,18 +376,33 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
             "Avatar Updated Successfully"
         ))
 })
-const updateUserCoverImage = asyncHandler(async (req, res) => {
-    const coverImageLocalPath = req.files?.path
 
-    if (!coverImageLocalPath) {
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+    const newCoverImageLocalPath = req.files?.newCoverImage[0]?.path
+    // console.log('newCoverImageLocalPath', newCoverImageLocalPath);
+
+    // console.log("req.files", req.files);
+
+    if (!newCoverImageLocalPath) {
         throw new ApiError(400, "CoverImage file is Missing!!")
     }
 
-    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+    const coverImage = await uploadOnCloudinary(newCoverImageLocalPath)
 
     if (!coverImage.url) {
         throw new ApiError(400, "Error while uploading coverImage")
     }
+
+    //Delete old coverImage from cloudinary
+    const getUserOldfiles = await User.findById(req.user?._id).select("-password -refreshToken -watchHistory")
+    // console.log("User details for oldPublicCoverImageUrl", getUserOldfiles);
+
+    const oldCoverImagePublicUrl = getUserOldfiles?.coverImage
+    // console.log("oldCoverImagePublicUrl", oldCoverImagePublicUrl);
+
+    // const deleteOldCoverImage = await deleteFileonCloudinary(oldCoverImagePublicUrl)
+    // console.log("deleted coverImage file:", deleteOldCoverImage);
+    await deleteFileonCloudinary(oldCoverImagePublicUrl)
 
     const user = await User.findByIdAndUpdate(req.user?._id,
         {
@@ -402,7 +423,8 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
             "coverImage Updated Successfully"
         ))
 })
-//? to update files create diff endpoint and diff controller ex.if only: update img -> /update-img Reason: no need to save whole user again if only dp change-> /update-img. 
+
+
 export {
     registerUser,
     loginUser,
@@ -412,5 +434,5 @@ export {
     getCurrentUser,
     updateAccountDetails,
     updateUserAvatar,
-    updateUserCoverImage, //create this
+    updateUserCoverImage,
 }

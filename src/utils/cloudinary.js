@@ -24,19 +24,53 @@ const uploadOnCloudinary = async (localFilePath) => {
             folder: 'ChaiaurBackend',
             resource_type: "auto"
         })
+        // console.log('uploadOnCloudinary response:', response);
 
         fs.unlinkSync(localFilePath)
         // return response.url
         return response
     } catch (error) {
         //CleanUP
-        console.log(`catch(cloudinary) file upload failed`, error);
+        console.error(`catch(cloudinary) file upload failed`, error);
         fs.unlinkSync(localFilePath) //remove locally saved file due to upload failure
         return null
     }
 }
 
 
+const deleteFileonCloudinary = async (oldFilePublicUrl) => {
+    try {
+        if (!oldFilePublicUrl) {
+            console.error("OldFilePublicUrl not found");
+            return null
+        }
+        // console.log('oldFilePublicUrl', oldFilePublicUrl);
 
+        const getPublicId = (cloudinaryUrl) => {
+            // 1. Split by 'upload/' and take the second part
+            const partAfterUpload = cloudinaryUrl.split('/upload/')[1];
 
-export { uploadOnCloudinary }
+            // 2. Remove the version (e.g., 'v1769755006/')
+            const pathWithoutVersion = partAfterUpload.split('/').slice(1).join('/');
+
+            // 3. Remove the file extension (e.g., '.png')
+            const publicId = pathWithoutVersion.split('.')[0];
+
+            return publicId;
+        };
+        const publicId = getPublicId(oldFilePublicUrl)
+        // console.log('publicId:', publicId);
+
+        const response = await cloudinary.uploader.destroy(publicId, { invalidate: true })
+        // console.log('deleteFileResponse', response);
+
+        return response
+    } catch (error) {
+        console.error(`catch(cloudinary) file deletion failed`, error);
+    }
+}
+
+export {
+    uploadOnCloudinary,
+    deleteFileonCloudinary
+}
