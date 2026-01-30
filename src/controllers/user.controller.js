@@ -338,6 +338,8 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
 })
 
 //? to update files create diff endpoint and diff controller ex.if only: update img -> /update-img Reason: no need to save whole user again if only dp change-> /update-img. 
+
+//two db calls(getUser, updateUserfiles) -> migrate in single if possible
 const updateUserAvatar = asyncHandler(async (req, res) => {
     const newAvatarLocalPath = req.files?.newAvatar[0]?.path
     // console.log("req.files", req.files);
@@ -425,6 +427,110 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 })
 
 
+const getChannelProfile = asyncHandler(async (req, res) => {
+    /*
+Channle username from url
+users collection -> find(username)
+subcription collection -> subscribers: find(channel) -> countDocuments() = subscribers
+subcription collection -> subscribedChannel: find(user) -> countDocuments() = subscribedChannel
+populate/join subscription collection(subscribers && subscribed channels)
+/// for follow button:userself == no follow button, 
+if(!userSelf){
+ subscription collection -> find subscribedchannles and -> check for channelname(id) 
+} 
+pipelins?
+$lookup
+$addfields
+$first
+$project
+$in: lookin both array and objects also
+for more aggrigation piplines:mongodb collection -> aggregation -> new stage.
+*/
+
+    /* chai aur code version---------*/
+    const { username } = req.params
+
+    if (!username.trim()) {
+        throw new ApiError(400, "Usename is missing")
+    }
+
+    // User.aggregate([{}, {}, {}...])
+    const channel = await User.aggregate(
+        [
+            {
+                //match all documents username 
+                $match: {
+                    userName: username?.toLowerCase(),
+                }
+                //Single document: matching username whose channel searched
+            },
+            {
+                $lookup: {
+                    from: "Subscription",
+                    localField: "_id",
+                    foreignField: "channel",
+                    as: "subscribers"
+                }
+                //subscriber documents(match based on channel: documents having same channel -> list users = subscribers )
+            },
+            {
+                $lookup: {
+                    from: "Subscription",
+                    localField: "_id",
+                    foreignField: "subscriber",
+                    as: "subscriptions"
+                }
+                //subscriber documents(documents having same user -> list channels = subscriptions/subscribedTo)
+            },
+            {
+                $addFields: {
+                    subscribersCount: {
+                        $size: "$subscribers"
+                    },
+                    subscriptionsCount: {
+                        $size: "$subscriptions"
+                    },
+                    isSubscribed: {
+                        //match loggedin user and sercheduser
+                        $cond: {
+                            if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+                            then: true,
+                            else: false
+                        }
+                    }
+                }
+            },
+            {
+                $project: {
+                    fullName: 1,
+                    userName: 1,
+                    email: 1,
+                    avatar: 1,
+                    coverImage: 1,
+                    subscribersCount: 1,
+                    subscriptionsCount: 1,
+                    isSubscribed: 1
+                }
+            }
+        ]
+    )
+
+    console.log('channel', typeof (channel), channel);
+    // Can we break pipline after first stage(!match return)
+    if (!channel?.length) {
+        throw new ApiError(404, "Channel not found")
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                channel[0],
+                "User Channel fatched sucessfully"
+            ))
+})
+
 export {
     registerUser,
     loginUser,
@@ -435,4 +541,5 @@ export {
     updateAccountDetails,
     updateUserAvatar,
     updateUserCoverImage,
+    getChannelProfile,
 }
