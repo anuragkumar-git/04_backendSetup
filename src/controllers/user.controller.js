@@ -1,4 +1,3 @@
-import { log } from 'console'
 import { User } from '../models/user.model.js'
 import { ApiError } from '../utils/ApiError.js'
 import { ApiResponse } from '../utils/ApiResponse.js'
@@ -6,7 +5,6 @@ import { asyncHandler } from '../utils/asyncHandler.js'
 import { deleteFileonCloudinary, uploadOnCloudinary } from '../utils/cloudinary.js'
 import jwt from 'jsonwebtoken'
 import mongoose from 'mongoose'
-import { resolveSoa } from 'dns'
 
 const generateAccessTokenAndRefreshTokens = async (userId) => {
     try {
@@ -470,7 +468,7 @@ for more aggrigation piplines:mongodb collection -> aggregation -> new stage.
             },
             {
                 $lookup: {
-                    from: "Subscription",
+                    from: "subscriptions",
                     localField: "_id",
                     foreignField: "channel",
                     as: "subscribers"
@@ -479,7 +477,7 @@ for more aggrigation piplines:mongodb collection -> aggregation -> new stage.
             },
             {
                 $lookup: {
-                    from: "Subscription",
+                    from: "subscriptions",
                     localField: "_id",
                     foreignField: "subscriber",
                     as: "subscriptions"
