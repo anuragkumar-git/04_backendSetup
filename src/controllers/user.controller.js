@@ -214,7 +214,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     // match token dbcall
     // !match remove from db, clear cookie.refreshToken
     // match-> gen accestoken
-    const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken //body-mobile app
+    const incomingRefreshToken = req.cookies?.refreshToken || req.body?.refreshToken //body-mobile app
 
     if (!incomingRefreshToken) {
         console.error('No incomingRefreshToken!!')
@@ -292,8 +292,14 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 
 const getCurrentUser = asyncHandler(async (req, res) => {
 
-    return res.status(200)
-        .json(200, req.user, "Current User Fetched successfully")
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+            200,
+            req.user,
+            "Current User Fetched successfully")
+        )
 
     // const user = User.findById(req.user._id)
     // if (!user) {

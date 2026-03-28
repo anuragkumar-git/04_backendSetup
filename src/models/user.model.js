@@ -6,7 +6,7 @@ const userSchema = new Schema({
     userName: {
         type: String,
         required: true,
-        unique: true,
+        unique: [true, "Username already exsist"],
         lowercase: true,
         trim: true,
         index: true //On most seraching fields
