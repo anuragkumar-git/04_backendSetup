@@ -22,4 +22,7 @@ app.use(cookieParser()) //CRUD cookies
 import userRoutes from './routes/user.routes.js'
 app.use("/api/v1/users", userRoutes)
 
+import videoRoutes from "./routes/video.routes.js"
+app.use("/api/v1/videos", videoRoutes)
+
 export { app }
