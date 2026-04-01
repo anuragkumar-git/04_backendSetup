@@ -104,7 +104,58 @@ const getVideoById = asyncHandler(async (req, res) => {
     )
 })
 
+
+const getVideoFeed = asyncHandler(async (req, res) => {
+    // allvideos -> their creater details
+    // videos -> from: users
+    // localfield -> owner
+    // foreign field -> _id
+    // as-> creater
+    const feed = await Video.aggregate(
+        [
+            {
+                $match: {
+                    isPublished: true
+                }
+            },
+            // how to send as object
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "owner",
+                    foreignField: "_id",
+                    as: "creater",
+                    pipeline: [
+                        {
+                            $project: {
+                                fullName: 1,
+                                userName: 1,
+                                avatar: 1
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
+    )
+
+    if (!feed?.length) {
+        throw new ApiError(500, "Failed to load feed")
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                feed,
+                "feed fached sucessfully"
+            )
+        )
+})
+
 export {
     publishVideo,
-    getVideoById
+    getVideoById,
+    getVideoFeed,
 }
