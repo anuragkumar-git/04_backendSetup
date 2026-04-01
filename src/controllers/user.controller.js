@@ -496,6 +496,14 @@ for more aggrigation piplines:mongodb collection -> aggregation -> new stage.
                 //subscriber documents(documents having same user -> list channels = subscriptions/subscribedTo)
             },
             {
+                $lookup:{
+                    from:"videos",
+                    localField:"_id",
+                    foreignField: "owner",
+                    as:"publishedVideos"
+                }
+            },
+            {
                 $addFields: {
                     subscribersCount: {
                         $size: "$subscribers"
@@ -522,8 +530,9 @@ for more aggrigation piplines:mongodb collection -> aggregation -> new stage.
                     coverImage: 1,
                     subscribersCount: 1,
                     subscriptionsCount: 1,
-                    isSubscribed: 1
-                }
+                    isSubscribed: 1,
+                    publishedVideos: 1
+                }   
             }
         ]
     )

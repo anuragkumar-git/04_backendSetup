@@ -16,6 +16,9 @@ const publishVideo = asyncHandler(async (req, res) => {
     // console.log(req.body);
 
     // console.log(title, description)
+    if(!title || !description){
+        throw new ApiError(400, "Video title and descriptions are required!!")
+    }
 
     const videoLocalPath = req.files?.videoFile[0]?.path
     const thumbnailLocalPath = req.files?.thumbnailFile[0]?.path || null
@@ -60,6 +63,26 @@ const publishVideo = asyncHandler(async (req, res) => {
 
 })
 
+const getVideoById = asyncHandler(async (req, res)=>{
+    console.log('getVideoById');
+    
+    const {id} = req.params 
+    console.log('id', id);
+    if(!id.trim()){
+        throw new ApiError(400, "video id is rquired!!")
+    }
+    
+    const videoDocument = await Video.findById(id) 
+    // createrDetails:creater avatar, createrName, subscribers, subscribed? 
+    if(!videoDocument){
+        throw new ApiError(404, "Video doesn't exsist")
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, videoDocument, "Video found." )
+    )
+})
 export {
-    publishVideo
+    publishVideo,
+    getVideoById
 }
