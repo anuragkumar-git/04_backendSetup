@@ -537,7 +537,7 @@ for more aggrigation piplines:mongodb collection -> aggregation -> new stage.
         ]
     )
 
-    console.log('channel', typeof (channel), channel);
+    // console.log('channel', typeof (channel), channel);
     // Can we break pipline after first stage(!match return)
     if (!channel?.length) {
         throw new ApiError(404, "Channel not found")

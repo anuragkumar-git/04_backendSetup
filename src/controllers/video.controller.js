@@ -1,3 +1,4 @@
+import { User } from "../models/user.model.js"
 import { Video } from "../models/video.model.js"
 import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
@@ -16,7 +17,7 @@ const publishVideo = asyncHandler(async (req, res) => {
     // console.log(req.body);
 
     // console.log(title, description)
-    if(!title || !description){
+    if (!title || !description) {
         throw new ApiError(400, "Video title and descriptions are required!!")
     }
 
@@ -63,25 +64,46 @@ const publishVideo = asyncHandler(async (req, res) => {
 
 })
 
-const getVideoById = asyncHandler(async (req, res)=>{
-    console.log('getVideoById');
-    
-    const {id} = req.params 
-    console.log('id', id);
-    if(!id.trim()){
+const getVideoById = asyncHandler(async (req, res) => {
+
+    const { id } = req.params
+    if (!id) {
         throw new ApiError(400, "video id is rquired!!")
     }
-    
+
     const videoDocument = await Video.findById(id) 
-    // createrDetails:creater avatar, createrName, subscribers, subscribed? 
-    if(!videoDocument){
+
+    if (!videoDocument) {
         throw new ApiError(404, "Video doesn't exsist")
     }
 
+    await User.findOneAndUpdate(
+        {
+            _id: req?.user?._id
+        },
+        {
+            $addToSet: {
+                watchHistory: id
+            }
+        }
+    )
+
+    await Video.updateOne(
+        {
+            _id: id
+        },
+        {
+            $inc: {
+                views: 1
+            }
+        })
+
+
     return res.status(200).json(
-        new ApiResponse(200, videoDocument, "Video found." )
+        new ApiResponse(200, videoDocument, "Video found.")
     )
 })
+
 export {
     publishVideo,
     getVideoById
